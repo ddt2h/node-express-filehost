@@ -31,7 +31,7 @@ class FileService {
             let fileInfos: FileInfo[] = [];
             for (let i = 0; i < fileList.length; i++) {
                 let fileStat = await fs.stat(path.join(this.filePath, fileList[i]));
-                let info: FileInfo = {name: fileList[i], size: fileStat.size};
+                let info: FileInfo = {name: fileList[i], size: fileStat.size, createdAt: fileStat.birthtimeMs};
                 fileInfos.push(info);         
             }
             return { result: fileInfos, error: null };

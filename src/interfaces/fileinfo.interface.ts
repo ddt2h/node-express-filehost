@@ -1,1 +1,1 @@
-export interface FileInfo { name: string, size: number }
+export interface FileInfo { name: string, size: number, createdAt: number };
