@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>File Manager</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+    }
+
+    #file-container {
+      max-height: 400px;
+      overflow-y: auto;
+      border: 1px solid #ccc;
+      padding: 10px;
+      margin-bottom: 20px;
+    }
+
+    .file-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 5px;
+      border-bottom: 1px solid #eee;
+    }
+
+    .progress-bar-container {
+      width: 100%;
+      background-color: #f3f3f3;
+      border-radius: 4px;
+      overflow: hidden;
+      margin-left: 10px;
+    }
+
+    .file-item button {
+      margin-left: 10px;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>File Manager</h1>
+  <div id="file-container">
+    <!-- Files will be populated here -->
+  </div>
+  <button id="add-file-button">Add File</button>
+  <button id="download-all-button">Download All</button>
+  <button id="delete-all-button">Delete All</button>
+  <input type="file" id="file-input" multiple style="display: none;">
+
+  <script>
+    const fileContainer = document.getElementById('file-container');
+    const addFileButton = document.getElementById('add-file-button');
+    const fileInput = document.getElementById('file-input');
+    const downloadAllButton = document.getElementById('download-all-button');
+    const deleteAllButton = document.getElementById('delete-all-button');
+
+    let url = 'https://2bd3cb05833b3ecc90b945bd04ae9ca1.serveo.net/';
+    // Function to fetch and display files
+
+    function humanFileSize(size) {
+      var i = size == 0 ? 0 : Math.floor(Math.log(size) / Math.log(1024));
+      return +((size / Math.pow(1024, i)).toFixed(2)) * 1 + ' ' + ['B', 'kB', 'MB', 'GB', 'TB'][i];
+    }
+
+
+    function updateProgressBar(progressBar, percentage) {
+      progressBar.style.width = `${percentage}%`;
+    }
+
+    function fetchFiles() {
+      fetch(url + 'files/')
+        .then(response => response.json())
+        .then(files => {
+          fileContainer.innerHTML = '';
+          files.result.forEach(file => {
+            const fileItem = document.createElement('div');
+            fileItem.classList.add('file-item');
+            fileItem.innerHTML = `
+                            <span>${file.name}, ${humanFileSize(file.size)}</span>
+                            
+                            <div>
+                              <button onclick="downloadFile('${file.name}')">Download</button>
+                              <button onclick="deleteFile('${file.name}')">Delete</button>
+                            </div>
+                        `;
+            fileContainer.appendChild(fileItem);
+          });
+        })
+        .catch(error => alert('Error fetching files:', error));
+    }
+
+    // Function to delete a file
+    function deleteFile(filename) {
+      fetch(url + `files/${filename}`, {
+        method: 'DELETE'
+      })
+        .then(response => {
+          if (response.ok) {
+            fetchFiles();
+          } else {
+            alert('Error deleting file:', response.statusText);
+          }
+        });
+    }
+
+    // Function to view a file
+    function downloadFile(filename) {
+      // Encode the filename to correctly handle special characters in the URL
+      const encodedFilename = encodeURIComponent(filename);
+
+      fetch(url + `files/${encodedFilename}`)
+        .then(response => response.blob())
+        .then(blob => {
+          // Create a link element
+          const link = document.createElement('a');
+          // Use decodeURIComponent to correctly handle non-ASCII characters in the filename
+          link.href = URL.createObjectURL(blob);
+          link.download = decodeURIComponent(filename);
+
+          // Append the link to the body
+          document.body.appendChild(link);
+          // Programmatically click the link to trigger the download
+          link.click();
+          // Remove the link from the document
+          document.body.removeChild(link);
+        })
+        .catch(error => console.error('Error downloading file:', error));
+    }
+
+    // Function to handle file upload
+    addFileButton.addEventListener('click', () => {
+      fileInput.click();
+    });
+
+    function uploadFiles(files) {
+      let promises = [];
+      Array.from(files).forEach(file => {
+
+        let newPromise = new Promise((res, rej) => {
+          const xhr = new XMLHttpRequest();
+          const formData = new FormData();
+          formData.append('file', file);
+
+          xhr.upload.onprogress = (event) => {
+            if (event.lengthComputable) {
+              const percentComplete = (event.loaded / event.total) * 100;
+              console.log(`Upload progress: ${percentComplete.toFixed(2)}%`);
+            }
+          };
+
+          xhr.onload = () => {
+            if (xhr.status === 200) {
+              res('File uploaded successfully');
+            } else {
+              rej('Upload failed:', xhr.statusText);
+            }
+          };
+
+          xhr.onerror = () => {
+            rej('Upload failed');
+          };
+
+          xhr.open('POST', '/files');
+          xhr.send(formData);
+        });
+
+        promises.push(newPromise);
+        Promise.allSettled(promises).then(a => {
+          fetchFiles();
+        });
+      });
+    }
+    // Add event listener to the file input to handle multiple file uploads
+    fileInput.addEventListener('change', () => {
+      uploadFiles(fileInput.files);
+    });
+
+
+    // Function to download all files
+    function downloadAllFiles() {
+      fetch(`${url}files/`)
+        .then(response => response.json())
+        .then(files => {
+          files.result.forEach(filename => {
+            downloadFile(filename);
+          });
+        })
+        .catch(error => alert('Error fetching file list:', error));
+    }
+
+    downloadAllButton.addEventListener('click', downloadAllFiles);
+
+    function deleteAllFiles() {
+      fetch(`${url}files/`)
+        .then(response => response.json())
+        .then(files => {
+          files.result.forEach(filename => {
+            deleteFile(filename.name);
+          });
+        })
+        .catch(error => alert('Error fetching file list:', error));
+    }
+
+    deleteAllButton.addEventListener('click', deleteAllFiles);
+
+    // Initial fetch of files
+    fetchFiles();
+  </script>
+</body>
+
+</html>
