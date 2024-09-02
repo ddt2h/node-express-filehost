@@ -26,8 +26,8 @@ class App {
   }
 
   public listen() {
-    this.app.listen(3000, '0.0.0.0', function () {
-      console.log('Listening to port:  ' + 3000);
+    this.app.listen(22828, '0.0.0.0', function () {
+      console.log('Listening to port:  ' + 22828);
     });
   }
 }

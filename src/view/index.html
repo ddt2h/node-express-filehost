@@ -49,6 +49,7 @@
   <button id="download-all-button">Download All</button>
   <button id="delete-all-button">Delete All</button>
   <input type="file" id="file-input" multiple style="display: none;">
+  <span id="upload-info"></span>
 
   <script>
     const fileContainer = document.getElementById('file-container');
@@ -56,8 +57,9 @@
     const fileInput = document.getElementById('file-input');
     const downloadAllButton = document.getElementById('download-all-button');
     const deleteAllButton = document.getElementById('delete-all-button');
+    const uploadInfo = document.getElementById('upload-info');
 
-    let url = 'https://2bd3cb05833b3ecc90b945bd04ae9ca1.serveo.net/';
+    let url = window.location.origin +'/';
     // Function to fetch and display files
 
     function humanFileSize(size) {
@@ -70,6 +72,16 @@
       progressBar.style.width = `${percentage}%`;
     }
 
+    function addUploadingElement(id) {
+      const fileItem = document.createElement('div');
+      fileItem.classList.add('file-item');
+      fileItem.innerHTML = `
+                            <span id="uploading:">asd</span>
+                        `;
+      fileContainer.appendChild(fileItem);
+      return fileItem;
+    }
+
     function fetchFiles() {
       fetch(url + 'files/')
         .then(response => response.json())
@@ -78,8 +90,9 @@
           files.result.forEach(file => {
             const fileItem = document.createElement('div');
             fileItem.classList.add('file-item');
+            let date = new Date(file.createdAt);
             fileItem.innerHTML = `
-                            <span>${file.name}, ${humanFileSize(file.size)}</span>
+                            <span>${file.name}, ${humanFileSize(file.size)}, ${date}</span>
                             
                             <div>
                               <button onclick="downloadFile('${file.name}')">Download</button>
@@ -94,7 +107,7 @@
 
     // Function to delete a file
     function deleteFile(filename) {
-      fetch(url + `files/${filename}`, {
+      fetch(url + `files/${encodeURI(filename)}`, {
         method: 'DELETE'
       })
         .then(response => {
@@ -137,9 +150,10 @@
 
     function uploadFiles(files) {
       let promises = [];
-      Array.from(files).forEach(file => {
-
+      let statuses = [];
+      Array.from(files).forEach((file, index) => {
         let newPromise = new Promise((res, rej) => {
+          let element = addUploadingElement(index);
           const xhr = new XMLHttpRequest();
           const formData = new FormData();
           formData.append('file', file);
@@ -147,7 +161,7 @@
           xhr.upload.onprogress = (event) => {
             if (event.lengthComputable) {
               const percentComplete = (event.loaded / event.total) * 100;
-              console.log(`Upload progress: ${percentComplete.toFixed(2)}%`);
+              element.textContent = `${file.name}, ${humanFileSize(event.loaded)}/${humanFileSize(event.total)}, ${percentComplete.toFixed(1)}%`;
             }
           };
 
@@ -185,7 +199,7 @@
         .then(response => response.json())
         .then(files => {
           files.result.forEach(filename => {
-            downloadFile(filename);
+            downloadFile(filename.name);
           });
         })
         .catch(error => alert('Error fetching file list:', error));
